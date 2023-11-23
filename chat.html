@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat</title>
+    <link rel="stylesheet" href="styles/style.css" />
+    <script src="node_modules/jquery/dist/jquery.js"></script>
+    <link rel="stylesheet" href="styles/js-snackbar.css" />
+    <script src="scripts/js-snackbar.js"></script>
+    <script src="node_modules/socket.io/client-dist/socket.io.js"></script>
+    <script src="node_modules/socketio-file-upload/client.js"></script>
+    <script>
+      $(() => {
+        var socket = io("http://localhost:8009");
+        socket.on("connect", () => {
+          var loader = new SocketIOFileUpload(socket);
+          loader.listenOnInput(document.getElementById("fu"));
+          loader.listenOnDrop(document.getElementById("drop"));
+          $("#pconnect").show();
+          $("#connect").click(() => {
+            //alert($('#dname').val())
+            socket.emit("register", $("#dname").val());
+          });
+          $("#send").click(() => {
+            if ($("#rname").html() == "") {
+              SnackBar({
+                message: `You can send meassge only in an active room`,
+                position: "tc",
+                status: "info",
+              });
+            } else {
+              socket.emit("chat", $("#msg").val());
+              $("#msg").val("");
+            }
+          });
+          $("#browse").click(() => {
+            $("#fu").trigger("click");
+          });
+          $("#create").click(() => {
+            socket.emit("newroom", $("#room").val());
+            $("#room").val("");
+          });
+          $("#join").click(() => {
+            socket.emit("jointo", $("#rooms").val());
+          });
+          socket.on("regsuccess", (name) => {
+            //console.log(name);
+            $("#hname").html(name);
+            $("#pconnect").hide();
+            $("#pchat").show();
+          });
+          socket.on("joinedto", (name) => {
+            $("#rname").html(` in room ${name}`);
+          });
+          socket.on("userlist", (names) => {
+            console.log(names);
+            $("#users").empty(),
+              names.forEach((n) => {
+                $("#users").append(`<li>${n}</li>`);
+              });
+          });
+          socket.on("roomlist", (names) => {
+            //console.log(names);
+            $("#rooms").empty(),
+              names.forEach((n) => {
+                $("#rooms").append(`<option>${n}</option>`);
+              });
+          });
+          socket.on("message", (m) => {
+            $("#messages").append(`<li>${m.from}: ${m.msg}</li>`);
+          });
+          socket.on("uploaded", (m) => {
+            //console.log(m);
+            $("#files").append(`<figure>
+						<img src="uploads/${m.type == "image" ? m.file : "file.png"}" />
+						<figcaption>Uploaded by ${m.from}</figcaption>
+						<a target='_blank' href="uploads/${m.file}">Download</a>
+					</figure>`);
+          });
+          loader.addEventListener("complete", function (event) {
+            //console.log(event.success);
+            SnackBar({
+              message: `${event.file.name} uploaded`,
+              position: "bc",
+            });
+          });
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <nav id="nav">
+      <span class="logo"><img src="images/logo_2.png" alt="brand logo" /></span>
+      <span class="brand">Private Chat</span>
+      <span class="fixer"> </span>
+      <ul>
+        <li><a href="index.html">Home</a></li>
+
+        <li><a href="chat.html">Chat</a></li>
+      </ul>
+    </nav>
+    <div class="container main">
+      <div id="pconnect" style="display: none">
+        <input
+          placeholder="display name.."
+          type="text"
+          id="dname"
+          class="text-grow"
+        /><button type="button" id="connect" class="btn">Connect</button>
+      </div>
+      <div id="pchat" style="display: none" class="my-2">
+        <div class="c-1">
+          <div class="list-header">Users</div>
+          <ul class="list" id="users"></ul>
+        </div>
+        <div class="c-2">
+          <div>
+            <span id="hname" style="font-weight: 500"></span>
+            <span id="rname"></span>
+          </div>
+          <div class="flex my-1">
+            <select type="text" id="rooms" class="text-grow"></select
+            ><button type="button" id="join" class="btn">Jon room</button>
+          </div>
+          <div class="flex my-1">
+            <input
+              placeholder="room name..."
+              type="text"
+              id="room"
+              class="text-grow"
+            /><button type="button" id="create" class="btn">New room</button>
+          </div>
+          <div class="flex my-1">
+            <input
+              placeholder="message..."
+              type="text"
+              id="msg"
+              class="text-grow"
+            /><button type="button" id="send" class="btn">Send</button
+            ><button type="button" id="browse" class="btn">Browse</button>
+          </div>
+          <div id="drop" class="my-1">Drop files here</div>
+          <div id="pmessages">
+            <div class="list-header mt">Messages</div>
+            <ul class="list" id="messages"></ul>
+          </div>
+          <div id="files" class="files"></div>
+        </div>
+      </div>
+    </div>
+    <footer class="footer">
+      <p>&copy; Copyright 2022</p>
+    </footer>
+    <input type="file" id="fu" style="display: none" />
+  </body>
+</html>
